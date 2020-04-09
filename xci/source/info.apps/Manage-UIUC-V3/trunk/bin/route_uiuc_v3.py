@@ -171,12 +171,12 @@ class HandleLoad():
                 'resource_group_tools_and_services:Programming': 'Computing Tools and Services:Programming',
                 'resource_group_tools_and_services:ResearchComputing': 'Computing Tools and Services:Research Computing',
                 'resource_group_tools_and_services:Software': 'Software:Software',
-                'resource_group_tools_and_services:WebPublishingAndCommunication': 'Computing Tools and Services:Web Publishing and Communication',
+                'resource_group_tools_and_services:WebPublishingAndCommunication': 'Computing Tools and Services:Web Publishing and Communications',
             }
         self.TITLEMAP = {
                 'Research Computing': 'Research Computing',
                 'Web Hosting and Publishing': 'Web Publishing and Communications',
-                'Data Resources': 'Data Resources',
+                'Data Resources': 'Data',
             }
 
         self.STEPS = []
