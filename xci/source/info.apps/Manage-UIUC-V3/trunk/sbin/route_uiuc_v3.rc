@@ -29,7 +29,7 @@ DAEMON_USER=software
 
 . /etc/init.d/functions
 
-PYTHON_BASE=${APP_BASE}/`cat python/lib/python*/orig-prefix.txt`
+PYTHON_BASE=`cat python/lib/python*/orig-prefix.txt`
 export LD_LIBRARY_PATH=${PYTHON_BASE}/lib
 
 PIPENV_BASE=${APP_BASE}/python
