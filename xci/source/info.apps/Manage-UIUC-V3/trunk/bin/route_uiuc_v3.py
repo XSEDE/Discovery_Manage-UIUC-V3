@@ -760,7 +760,7 @@ if __name__ == '__main__':
     except Exception as e:
         msg = '{} Exception: {}'.format(type(e).__name__, e)
         router.logger.error(msg)
-        traceback.print_exc(file=sys.stderr
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
     finally:
-        del router
-    sys.exit(rc)
+        router.exit(rc)
