@@ -257,9 +257,6 @@ class HandleLoad():
         self.lock.release()
         sys.exit(rc)
 
-    def __del__(self):
-        self.lock.release()
-    
     def SaveDaemonStdOut(self, path):
         # Save daemon log file using timestamp only if it has anything unexpected in it
         try:
