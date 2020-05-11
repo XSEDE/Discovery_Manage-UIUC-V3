@@ -55,7 +55,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 class HandleLoad():
-    def __init__(self):
+    def __init__(self, peek_sleep=10, offpeek_sleep=60, max_stale=24 * 60):
         parser = argparse.ArgumentParser(epilog='File SRC|DEST syntax: file:<file path and name')
         parser.add_argument('-s', '--source', action='store', dest='src', \
                             help='Content source {postgresql} (default=postgresql)')
@@ -145,6 +145,9 @@ class HandleLoad():
             sys.exit(1)
 
         # Initialize appliation variables
+        self.peak_sleep = peek_sleep * 60       # 10 minutes in seconds during peak business hours
+        self.offpeek_sleep = offpeek_sleep * 60 # 60 minutes in seconds during off hours
+        self.max_stale = max_stale * 60         # 24 hours in seconds force refresh
         self.memory = {}
         self.PROVIDER_URNMAP = self.memory['provider_urnmap'] = {}
         self.Affiliation = 'uiuc.edu'
@@ -740,7 +743,7 @@ class HandleLoad():
 
     def smart_sleep(self):
         # Between 6 AM and 9 PM Central
-        current_sleep = self.peak_sleep if 6 <= datetime.now(Central).hour <= 21 else self.offpeek_sleep
+        current_sleep = self.peak_sleep if 6 <= datetime.now(Central).hour <= 21 else self.offpeak_sleep
         self.logger.debug('sleep({})'.format(current_sleep))
         sleep(current_sleep)
 
