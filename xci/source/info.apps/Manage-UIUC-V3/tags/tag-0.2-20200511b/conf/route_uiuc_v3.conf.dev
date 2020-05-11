@@ -1,0 +1,43 @@
+{
+    "DEBUG": true,
+    "SOURCE_URL": "postgresql://localhost:5432/warehouse",
+    "SOURCE_DBUSER": "uiuc",
+    "SOURCE_DBPASS": "",
+    "DESTINATION": "warehouse:",
+    "ELASTIC_HOSTS": ["localhost:9200"],
+    "LOG_LEVEL": "info",
+    "LOG_FILE": "/soft/warehouse-apps-1.0/Manage-UIUC-V3/var/route_uiuc_log.log",
+    "STEPS": [
+        {   "LOCALTYPE": "tag",
+            "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:tag",
+            "DESTINATION": "function:Memory_Tags"
+        },
+        {   "LOCALTYPE": "resources_tags",
+            "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:resources_tags",
+            "DESTINATION": "function:Memory_Resource_Tags"
+        },
+        {   "LOCALTYPE": "associated_resources",
+            "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:associated_resources",
+            "DESTINATION": "function:Memory_Resource_Associations"
+        },
+        {   "LOCALTYPE": "curated_guide_resource",
+            "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:curated_guide_resource",
+            "DESTINATION": "function:Memory_Guide_Resources"
+        },
+        {   "LOCALTYPE": "provider",
+            "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:provider",
+            "DESTINATION": "function:Warehouse_Providers",
+            "URNPREFIX": "urn:ogf:glue2:uiuc.edu:resource:providers:"
+        },
+        {   "LOCALTYPE": "resource",
+            "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:resource",
+            "DESTINATION": "function:Warehouse_Resources",
+            "URNPREFIX": "urn:ogf:glue2:uiuc.edu:resource:resources:"
+        },
+        {   "LOCALTYPE": "curated_guide",
+            "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:curated_guide",
+            "DESTINATION": "function:Warehouse_Guides",
+            "URNPREFIX": "urn:ogf:glue2:uiuc.edu:resource:curated_guides:"
+        }
+    ]
+}
