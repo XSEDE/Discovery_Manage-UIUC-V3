@@ -17,7 +17,7 @@ import re
 import shutil
 import signal
 import ssl
-import sys
+import sys, traceback
 from time import sleep
 from urllib.parse import urlparse
 import pytz
@@ -30,6 +30,8 @@ from django.forms.models import model_to_dict
 from django.utils.dateparse import parse_datetime
 from resource_v3.models import *
 from processing_status.process import ProcessingActivity
+
+from lockfile import pidlockfile
 
 import elasticsearch_dsl.connections
 from elasticsearch import Elasticsearch, RequestsHttpConnection
@@ -49,6 +51,9 @@ def datetime_standardize(indate):
     else:
         return(indate)
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 class HandleLoad():
     def __init__(self):
         parser = argparse.ArgumentParser(epilog='File SRC|DEST syntax: file:<file path and name')
@@ -58,12 +63,14 @@ class HandleLoad():
                             help='Content destination {analyze or warehouse} (default=analyze)')
         parser.add_argument('--ignore_dates', action='store_true', \
                             help='Ignore dates and force full resource refresh')
+        parser.add_argument('--once', action='store_true', \
+                            help='Run once and exit, or run continuous with sleep between interations (default)')
+        parser.add_argument('--daemon', action='store_true', \
+                            help='Run as daemon redirecting stdout, stderr to a file, or interactive (default)')
         parser.add_argument('-l', '--log', action='store', \
                             help='Logging level override to config (default=warning)')
         parser.add_argument('-c', '--config', action='store', default='./route_uiuc.conf', \
                             help='Configuration file default=./route_uiuc.conf')
-        parser.add_argument('--verbose', action='store_true', \
-                            help='Verbose output')
         parser.add_argument('--dev', action='store_true', \
                             help='Running in development environment')
         parser.add_argument('--pdb', action='store_true', \
@@ -84,7 +91,7 @@ class HandleLoad():
         try:
             self.config = json.loads(conf)
         except ValueError as e:
-            print('Error "{}" parsing config={}'.format(e, config_path))
+            eprint('Error "{}" parsing config={}'.format(e, config_path))
             sys.exit(1)
 
         # Initialize logging from arguments, or config file, or default to WARNING as last resort
@@ -215,9 +222,57 @@ class HandleLoad():
             # Merge CATALOG config and STEP config, with latter taking precendence
             self.STEPS.append({**self.CATALOGS[stepconf['CATALOGURN']], **stepconf})
             
+        if self.config.get('PID_FILE'):
+            pidfile_path =  self.config['PID_FILE']
+        else:
+            name = os.path.basename(__file__).replace('.py', '')
+            pidfile_path = '/var/run/{}/{}.pid'.format(name, name)
+        self.lock = pidlockfile.PIDLockFile(pidfile_path, timeout=5)
+        try:
+            self.lock.acquire()
+        except:
+            self.logger.error('Failed to acquire PIDLockFile={}'.format(pidfile_path))
+            sys.exit(1)
+
         signal.signal(signal.SIGINT, self.exit_signal)
         signal.signal(signal.SIGTERM, self.exit_signal)
-        self.logger.info('Starting program={} pid={}, uid={}({})'.format(os.path.basename(__file__), os.getpid(), os.geteuid(), pwd.getpwuid(os.geteuid()).pw_name))
+
+        if self.args.daemon and 'LOG_FILE' in self.config:
+            self.stdout_path = self.config['LOG_FILE'].replace('.log', '.daemon.log')
+            self.stderr_path = self.stdout_path
+            self.SaveDaemonStdOut(self.stdout_path)
+            sys.stdout = open(self.stdout_path, 'wt+')
+            sys.stderr = open(self.stderr_path, 'wt+')
+
+        mode =  ('daemon,' if self.args.daemon else 'interactive,') + \
+            ('once' if self.args.once else 'continuous')
+        self.logger.info('Starting mode=({}), program={} pid={}, uid={}({})'.format(mode, os.path.basename(__file__), os.getpid(), os.geteuid(), pwd.getpwuid(os.geteuid()).pw_name))
+
+    def exit_signal(self, signal, frame):
+        self.logger.critical('Caught signal={}, exiting...'.format(signal))
+        self.lock.release()
+        sys.exit(0)
+
+    def exit(self, rc):
+        self.lock.release()
+        sys.exit(rc)
+
+    def __del__(self):
+        self.lock.release()
+    
+    def SaveDaemonStdOut(self, path):
+        # Save daemon log file using timestamp only if it has anything unexpected in it
+        try:
+            with open(path, 'r') as file:
+                lines = file.read()
+                if not re.match('^started with pid \d+$', lines) and not re.match('^$', lines):
+                    nowstr = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S')
+                    newpath = '{}.{}'.format(path, nowstr)
+                    shutil.move(path, newpath)
+                    print('SaveDaemonStdOut as {}'.format(newpath))
+        except Exception as e:
+            print('Exception in SaveDaemonStdOut({})'.format(path))
+        return
 
     def Connect_Source(self, urlparse): # TODO
         [host, port] = urlparse.netloc.split(':')
@@ -257,7 +312,7 @@ class HandleLoad():
             cursor.execute(sql)
         except psycopg2.Error as e:
             self.logger.error('Failed "{}" with {}: {}'.format(sql, e.pgcode, e.pgerror))
-            sys.exit(1)
+            self.exit(1)
 
         COLS = [desc.name for desc in cursor.description]
         DATA = []
@@ -545,7 +600,7 @@ class HandleLoad():
             if id_str in RA:
                 for assoc_id in RA[id_str]:
                     relatedID = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', contype, assoc_id)
-                    myNEWRELATIONS[relatedID] = 'Resource Association'
+                    myNEWRELATIONS[relatedID] = 'Associated With'
             self.Update_REL(myGLOBALURN, myNEWRELATIONS)
 
             self.STATS.update({me + '.Update'})
@@ -625,7 +680,7 @@ class HandleLoad():
             if id_str in GR:
                 for assoc_id in GR[id_str]:
                     myRESOURCEURN = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', self.RESOURCE_CONTYPE, assoc_id)
-                    myNEWRELATIONS[myRESOURCEURN] = 'Guide Resource'
+                    myNEWRELATIONS[myRESOURCEURN] = 'Documention Reference'
             self.Update_REL(myGLOBALURN, myNEWRELATIONS)
 
             self.STATS.update({me + '.Update'})
@@ -636,24 +691,6 @@ class HandleLoad():
         self.PROCESSING_SECONDS[me] += (datetime.now(timezone.utc) - start_utc).total_seconds()
         self.log_target(me)
         return(True, '')
-
-    def SaveDaemonLog(self, path):
-        # Save daemon log file using timestamp only if it has anything unexpected in it
-        try:
-            with open(path, 'r') as file:
-                lines = file.read()
-                if not re.match('^started with pid \d+$', lines) and not re.match('^$', lines):
-                    nowstr = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S')
-                    newpath = '{}.{}'.format(path, nowstr)
-                    shutil.move(path, newpath)
-                    print('SaveDaemonLog as {}'.format(newpath))
-        except Exception as e:
-            print('Exception in SaveDaemonLog({})'.format(path))
-        return
-
-    def exit_signal(self, signal, frame):
-        self.logger.critical('Caught signal={}, exiting...'.format(signal))
-        sys.exit(0)
 
     def run(self):
         while True:
@@ -675,10 +712,10 @@ class HandleLoad():
 
                 if stepconf['SRCURL'].scheme != 'sql':   # This is already checked in __inir__
                     self.logger.error('Source scheme must be "sql"')
-                    sys.exit(1)
+                    self.exit(1)
                 if stepconf['DSTURL'].scheme != 'function':     # This is already checked in __inir__
                     self.logger.error('Destination scheme must be "function"')
-                    sys.exit(1)
+                    self.exit(1)
 
                 # Retrieve from SOURCE
                 content = self.Read_SQL(CURSOR, stepconf['SRCURL'].path, stepconf['LOCALTYPE'])
@@ -697,7 +734,18 @@ class HandleLoad():
 
             # Not disconnecting from Elasticsearch
             self.Disconnect_Source(CURSOR)
-            break
+
+            if self.args.once:
+                break
+            # Continuous
+            self.smart_sleep()
+        return(0)
+
+    def smart_sleep(self):
+        # Between 6 AM and 9 PM Central
+        current_sleep = self.peak_sleep if 6 <= datetime.now(Central).hour <= 21 else self.offpeek_sleep
+        self.logger.debug('sleep({})'.format(current_sleep))
+        sleep(current_sleep)
 
     def log_target(self, me):
         summary_msg = 'Processed {} in {:.3f}/seconds: {}/updates, {}/deletes, {}/skipped'.format(me,
@@ -708,10 +756,11 @@ class HandleLoad():
 if __name__ == '__main__':
     try:
         router = HandleLoad()
-        myrouter = router.run()
+        rc = router.run()
     except Exception as e:
         msg = '{} Exception: {}'.format(type(e).__name__, e)
         router.logger.error(msg)
-        sys.exit(1)
-    else:
-        sys.exit(0)
+        traceback.print_exc(file=sys.stderr
+    finally:
+        del router
+    sys.exit(rc)
