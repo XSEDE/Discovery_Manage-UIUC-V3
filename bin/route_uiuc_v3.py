@@ -760,4 +760,4 @@ if __name__ == '__main__':
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
     finally:
-        router.exit(rc)
+        sys.exit(rc)
