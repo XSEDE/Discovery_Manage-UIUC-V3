@@ -254,7 +254,7 @@ class HandleLoad():
     def exit_signal(self, signal, frame):
         self.logger.critical('Caught signal={}, exiting...'.format(signal))
         self.lock.release()
-        sys.exit(0)
+        sys.exit(1)
 
     def exit(self, rc):
         self.lock.release()
@@ -761,5 +761,6 @@ if __name__ == '__main__':
         msg = '{} Exception: {}'.format(type(e).__name__, e)
         router.logger.error(msg)
         traceback.print_exc(file=sys.stderr)
-        rc = 1
-    sys.exit(rc)
+        sys.exit(1)
+    finally:
+        router.exit(rc)
