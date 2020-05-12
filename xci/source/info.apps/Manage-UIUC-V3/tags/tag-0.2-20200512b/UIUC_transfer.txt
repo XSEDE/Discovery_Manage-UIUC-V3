@@ -1,0 +1,14 @@
+urn:glue2:ResourceV3Catalogs:uiuc.edu
+UIUC Resources Catalog
+UIUC Aggregated Resource Catalog
+http://localhost:8000/resource-api/v3/catalog/id/urn:glue2:ResourceV3Catalogs:uiuc.edu
+https://researchit.illinois.edu
+
+
+SELECT * from resource
+SELECT * from provider
+SELECT * from tag
+SELECT * from resources_tags
+SELECT * from associated_resources
+SELECT * from curated_guide
+SELECT * from curated_guide_resource
