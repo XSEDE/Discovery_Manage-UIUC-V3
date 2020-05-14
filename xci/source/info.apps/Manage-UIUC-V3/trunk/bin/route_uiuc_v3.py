@@ -754,8 +754,8 @@ class HandleLoad():
         self.logger.info(summary_msg)
 
 if __name__ == '__main__':
+    router = HandleLoad()
     try:
-        router = HandleLoad()
         rc = router.run()
     except Exception as e:
         msg = '{} Exception: {}'.format(type(e).__name__, e)
