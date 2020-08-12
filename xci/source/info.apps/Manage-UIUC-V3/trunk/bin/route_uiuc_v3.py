@@ -21,8 +21,8 @@ import sys, traceback
 from time import sleep
 from urllib.parse import urlparse
 import pytz
-Central = pytz.timezone('US/Central')
-UTC = pytz.timezone('UTC')
+Central_TZ = pytz.timezone('US/Central')
+UTC_TZ = pytz.timezone('UTC')
 
 import django
 django.setup()
@@ -45,9 +45,9 @@ def datetime_localparse(indate):
         return(indate)
     
 def datetime_standardize(indate):
-    # Localize as Central and convert to UTC
+    # Localize as Central and convert to UTC_TZ
     if isinstance(indate, datetime):
-        return(Central.localize(indate).astimezone(tz = UTC))
+        return(Central_TZ.localize(indate).astimezone(tz = UTC_TZ))
     else:
         return(indate)
 
@@ -743,7 +743,7 @@ class HandleLoad():
 
     def smart_sleep(self):
         # Between 6 AM and 9 PM Central
-        current_sleep = self.peak_sleep if 6 <= datetime.now(Central).hour <= 21 else self.offpeak_sleep
+        current_sleep = self.peak_sleep if 6 <= datetime.now(Central_TZ).hour <= 21 else self.offpeak_sleep
         self.logger.debug('sleep({})'.format(current_sleep))
         sleep(current_sleep)
 
