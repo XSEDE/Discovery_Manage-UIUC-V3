@@ -1,0 +1,3 @@
+tag-0.2-20200908 JP
+  - Switch from lockfile to pid module
+  - Reorgnize to match latest design in Manage-Resources-V3
