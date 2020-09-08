@@ -11,6 +11,7 @@ import json
 import logging
 import logging.handlers
 import os
+from pid import PidFile
 import psycopg2
 import pwd
 import re
@@ -31,19 +32,11 @@ from django.utils.dateparse import parse_datetime
 from resource_v3.models import *
 from processing_status.process import ProcessingActivity
 
-from lockfile import pidlockfile
-
 import elasticsearch_dsl.connections
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 
 import pdb
 
-def datetime_localparse(indate):
-    try:
-        return(parse_datetime(indate))
-    except:
-        return(indate)
-    
 def datetime_standardize(indate):
     # Localize as Central and convert to UTC_TZ
     if isinstance(indate, datetime):
@@ -54,7 +47,7 @@ def datetime_standardize(indate):
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-class HandleLoad():
+class Router():
     def __init__(self, peek_sleep=10, offpeek_sleep=60, max_stale=24 * 60):
         parser = argparse.ArgumentParser(epilog='File SRC|DEST syntax: file:<file path and name')
         parser.add_argument('-s', '--source', action='store', dest='src', \
@@ -84,16 +77,24 @@ class HandleLoad():
         config_path = os.path.abspath(self.args.config)
         try:
             with open(config_path, 'r') as file:
-                conf = file.read()
-                file.close()
+                conf=file.read()
         except IOError as e:
-            raise
+            eprint('Error "{}" reading config={}'.format(e, config_path))
+            sys.exit(1)
         try:
             self.config = json.loads(conf)
         except ValueError as e:
             eprint('Error "{}" parsing config={}'.format(e, config_path))
             sys.exit(1)
 
+        if self.config.get('PID_FILE'):
+            self.pidfile_path =  self.config['PID_FILE']
+        else:
+            name = os.path.basename(__file__).replace('.py', '')
+            self.pidfile_path = '/var/run/{}/{}.pid'.format(name, name)
+
+    # Setup AFTER we know that no other self is running
+    def Setup(self, peek_sleep=10, offpeek_sleep=60, max_stale=24 * 60):
         # Initialize logging from arguments, or config file, or default to WARNING as last resort
         loglevel_str = (self.args.log or self.config.get('LOG_LEVEL', 'WARNING')).upper()
         loglevel_num = getattr(logging, loglevel_str, None)
@@ -103,10 +104,24 @@ class HandleLoad():
         self.logger.setLevel(loglevel_num)
         self.formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(levelname)s %(message)s', \
                                            datefmt='%Y/%m/%d %H:%M:%S')
-        self.handler = logging.handlers.TimedRotatingFileHandler(self.config['LOG_FILE'], when='W6', \
-                                                                 backupCount = 999, utc = True)
+        self.handler = logging.handlers.TimedRotatingFileHandler(self.config['LOG_FILE'],
+            when='W6', backupCount = 999, utc = True)
         self.handler.setFormatter(self.formatter)
         self.logger.addHandler(self.handler)
+
+        if self.args.daemon and 'LOG_FILE' in self.config:
+            self.stdout_path = self.config['LOG_FILE'].replace('.log', '.daemon.log')
+            self.stderr_path = self.stdout_path
+            self.SaveDaemonStdOut(self.stdout_path)
+            sys.stdout = open(self.stdout_path, 'wt+')
+            sys.stderr = open(self.stderr_path, 'wt+')
+
+        signal.signal(signal.SIGINT, self.exit_signal)
+        signal.signal(signal.SIGTERM, self.exit_signal)
+
+        mode =  ('daemon,' if self.args.daemon else 'interactive,') + \
+            ('once' if self.args.once else 'continuous')
+        self.logger.info('Starting mode=({}), program={} pid={}, uid={}({})'.format(mode, os.path.basename(__file__), os.getpid(), os.geteuid(), pwd.getpwuid(os.geteuid()).pw_name))
 
         # Verify arguments and parse compound arguments
         SOURCE_URL = getattr(self.args, 'src') or self.config.get('SOURCE_URL', None)
@@ -225,39 +240,13 @@ class HandleLoad():
             # Merge CATALOG config and STEP config, with latter taking precendence
             self.STEPS.append({**self.CATALOGS[stepconf['CATALOGURN']], **stepconf})
             
-        if self.config.get('PID_FILE'):
-            pidfile_path =  self.config['PID_FILE']
-        else:
-            name = os.path.basename(__file__).replace('.py', '')
-            pidfile_path = '/var/run/{}/{}.pid'.format(name, name)
-        self.lock = pidlockfile.PIDLockFile(pidfile_path, timeout=5)
-        try:
-            self.lock.acquire()
-        except:
-            self.logger.error('Failed to acquire PIDLockFile={}'.format(pidfile_path))
-            sys.exit(1)
-
-        signal.signal(signal.SIGINT, self.exit_signal)
-        signal.signal(signal.SIGTERM, self.exit_signal)
-
-        if self.args.daemon and 'LOG_FILE' in self.config:
-            self.stdout_path = self.config['LOG_FILE'].replace('.log', '.daemon.log')
-            self.stderr_path = self.stdout_path
-            self.SaveDaemonStdOut(self.stdout_path)
-            sys.stdout = open(self.stdout_path, 'wt+')
-            sys.stderr = open(self.stderr_path, 'wt+')
-
-        mode =  ('daemon,' if self.args.daemon else 'interactive,') + \
-            ('once' if self.args.once else 'continuous')
-        self.logger.info('Starting mode=({}), program={} pid={}, uid={}({})'.format(mode, os.path.basename(__file__), os.getpid(), os.geteuid(), pwd.getpwuid(os.geteuid()).pw_name))
-
-    def exit_signal(self, signal, frame):
-        self.logger.critical('Caught signal={}, exiting...'.format(signal))
-        self.lock.release()
-        sys.exit(1)
+    def exit_signal(self, signum, frame):
+        self.logger.critical('Caught signal={}({}), exiting with rc={}'.format(signum, signal.Signals(signum).name, signum))
+        sys.exit(signum)
 
     def exit(self, rc):
-        self.lock.release()
+        if rc:
+            self.logger.error('Exiting with rc={}'.format(rc))
         sys.exit(rc)
 
     def SaveDaemonStdOut(self, path):
@@ -754,13 +743,14 @@ class HandleLoad():
         self.logger.info(summary_msg)
 
 if __name__ == '__main__':
-    router = HandleLoad()
-    try:
-        rc = router.run()
-    except Exception as e:
-        msg = '{} Exception: {}'.format(type(e).__name__, e)
-        router.logger.error(msg)
-        traceback.print_exc(file=sys.stderr)
-        sys.exit(1)
-    finally:
-        router.exit(rc)
+    router = Router()
+    with PidFile(router.pidfile_path):
+        try:
+            router.Setup()
+            rc = router.run()
+        except Exception as e:
+            msg = '{} Exception: {}'.format(type(e).__name__, e)
+            router.logger.error(msg)
+            traceback.print_exc(file=sys.stderr)
+            rc = 1
+    router.exit(rc)
