@@ -180,7 +180,7 @@ class Router():
         self.STATUSMAP = {
                 '4': 'Planned',
                 '3': 'Pre-production',
-                '2': 'Decommissioned',
+                '2': 'Retired',
                 '1': 'Production',
             }
         # https://docs.google.com/spreadsheets/d/1UbOy3FTEBQFFTCfaXNnh-6PASPCyxsOu2vrRledAkOg
