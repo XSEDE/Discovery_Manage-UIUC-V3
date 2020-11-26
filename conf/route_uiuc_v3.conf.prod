@@ -6,7 +6,7 @@
     "DESTINATION": "warehouse:",
     "ELASTIC_HOSTS": ["https://vpc-information-warehouse-test7-an2g46x6mo5puultw7yiypgahq.us-east-2.es.amazonaws.com:443/"],
     "LOG_LEVEL": "info",
-    "LOG_FILE": "/soft/warehouse-apps-1.0/Manage-UIUC-V3/var/route_uiuc_log.log",
+    "LOG_FILE": "/soft/warehouse-apps-1.0/Manage-UIUC-V3/var/route_uiuc_v3.log",
     "STEPS": [
         {   "LOCALTYPE": "tag",
             "CATALOGURN": "urn:ogf:glue2:info.xsede.org:catalog:uiuc.edu:tag",

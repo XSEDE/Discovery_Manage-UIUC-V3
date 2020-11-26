@@ -62,8 +62,8 @@ class Router():
                             help='Run as daemon redirecting stdout, stderr to a file, or interactive (default)')
         parser.add_argument('-l', '--log', action='store', \
                             help='Logging level override to config (default=warning)')
-        parser.add_argument('-c', '--config', action='store', default='./route_uiuc.conf', \
-                            help='Configuration file default=./route_uiuc.conf')
+        parser.add_argument('-c', '--config', action='store', default='./route_uiuc_v3.conf', \
+                            help='Configuration file default=./route_uiuc_v3.conf')
         parser.add_argument('--dev', action='store_true', \
                             help='Running in development environment')
         parser.add_argument('--pdb', action='store_true', \
