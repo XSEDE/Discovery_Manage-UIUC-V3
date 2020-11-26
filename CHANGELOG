@@ -1,3 +1,6 @@
+tag-0.3-20201126 JP
+  - Standardize: rename .rc to .sh and update code
+
 tag-0.2-20200908 JP
   - Switch from lockfile to pid module
   - Reorgnize to match latest design in Manage-Resources-V3
