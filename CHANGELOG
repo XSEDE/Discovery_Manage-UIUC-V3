@@ -1,3 +1,7 @@
+tag-0.3-20210616 JP
+  - Load ResourceGroup=Organizations, Type=Consulting & Support from Affiliation=uiuc.edu 
+    TO:  ResourceGroup=Professional Services, Type=Consulting & Support
+
 tag-0.3-20210615 JP
   - Set the Name field correctly to 'title'
 
