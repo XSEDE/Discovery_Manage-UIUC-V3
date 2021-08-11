@@ -1,3 +1,7 @@
+tag-0.3-20210811 JP
+  - Apply datetime_standardize to some EntityJSON dates to force them to have a timezone
+    Defaults to Central for UIUC
+
 tag-0.3-20210616 JP
   - Load ResourceGroup=Organizations, Type=Consulting & Support from Affiliation=uiuc.edu 
     TO:  ResourceGroup=Professional Services, Type=Consulting & Support

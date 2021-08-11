@@ -507,7 +507,7 @@ class Router():
 
             for field in ['last_updated', 'start_date_time', 'end_date_time']:
                 if field in item and isinstance(item[field], datetime):
-                    item[field] = item[field].strftime('%Y-%m-%dT%H:%M:%S%z')
+                    item[field] = datetime_standardize(item[field]).strftime('%Y-%m-%dT%H:%M:%S%z')
 
             myNEWRELATIONS = {} # The new relations for this item, key=related ID, value=relation type
             try:
@@ -619,9 +619,9 @@ class Router():
             id_str = str(item['id'])       # From number
             myGLOBALURN = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', contype, id_str)
             if 'created_at' in item and isinstance(item['created_at'], datetime):
-                item['created_at'] = item['created_at'].strftime('%Y-%m-%dT%H:%M:%S%z')
+                item['created_at'] = datetime_standardize(item['created_at']).strftime('%Y-%m-%dT%H:%M:%S%z')
             if 'updated_at' in item and isinstance(item['updated_at'], datetime):
-                item['updated_at'] = item['updated_at'].strftime('%Y-%m-%dT%H:%M:%S%z')
+                item['updated_at'] = datetime_standardize(item['updated_at']).strftime('%Y-%m-%dT%H:%M:%S%z')
             myRESTYPE = self.TITLEMAP.get(item['title'], '')
             try:
                 local = ResourceV3Local(
