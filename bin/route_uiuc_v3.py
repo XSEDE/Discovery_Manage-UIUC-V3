@@ -37,12 +37,38 @@ from elasticsearch import Elasticsearch, RequestsHttpConnection
 
 import pdb
 
-def datetime_standardize(indate):
-    # Localize as Central and convert to UTC_TZ
+# Localize to Central timezone if needed while preserving datetime or string type
+def datetime_centralize(indate):
+    # We have a datetime type
     if isinstance(indate, datetime):
-        return(Central_TZ.localize(indate).astimezone(tz = UTC_TZ))
+        if not indate.tzinfo:               # Add missing timezone
+            return(Central_TZ.localize(indate))
+        else:
+            return(indate)
+    # We have a string type
+    try:
+        p_indate = parse_datetime(indate)
+        if not p_indate.tzinfo:             # Add missing timezone
+            return(Central_TZ.localize(p_indate).strftime('%Y-%m-%dT%H:%M:%S%z'))
+    except:
+        pass
+    return(indate)
+
+# Convert to datetime if needed and Localize to Central timezone if needed
+def datetime_standardize(indate):
+    # We have a string instead of a datetime type
+    if isinstance(indate, datetime):
+        dtm_indate = indate
     else:
-        return(indate)
+        try:
+            dtm_indate = parse_datetime(indate)
+        except:
+            return(indate)
+    
+    if not dtm_indate.tzinfo:                 # Add missing timezone
+        return(Central_TZ.localize(dtm_indate))
+    else:
+        return(dtm_indate)
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -507,7 +533,7 @@ class Router():
 
             for field in ['last_updated', 'start_date_time', 'end_date_time']:
                 if field in item and isinstance(item[field], datetime):
-                    item[field] = datetime_standardize(item[field]).strftime('%Y-%m-%dT%H:%M:%S%z')
+                    item[field] = datetime_centralize(item[field])
 
             myNEWRELATIONS = {} # The new relations for this item, key=related ID, value=relation type
             try:
@@ -531,11 +557,11 @@ class Router():
                 
             if myRESTYPE or '' == 'Event': # In case it is None
                 try:
-                    StartDateTime = datetime_standardize(parse_datetime(item['start_date_time']))
+                    StartDateTime = datetime_standardize(item['start_date_time'])
                 except:
                     StartDateTime = None
                 try:
-                    EndDateTime = datetime_standardize(parse_datetime(item['end_date_time']))
+                    EndDateTime = datetime_standardize(item['end_date_time'])
                 except:
                     EndDateTime = None
             else:
@@ -619,9 +645,9 @@ class Router():
             id_str = str(item['id'])       # From number
             myGLOBALURN = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', contype, id_str)
             if 'created_at' in item and isinstance(item['created_at'], datetime):
-                item['created_at'] = datetime_standardize(item['created_at']).strftime('%Y-%m-%dT%H:%M:%S%z')
+                item['created_at'] = datetime_centralize(item['created_at'])
             if 'updated_at' in item and isinstance(item['updated_at'], datetime):
-                item['updated_at'] = datetime_standardize(item['updated_at']).strftime('%Y-%m-%dT%H:%M:%S%z')
+                item['updated_at'] = datetime_centralize(item['updated_at'])
             myRESTYPE = self.TITLEMAP.get(item['title'], '')
             try:
                 local = ResourceV3Local(
