@@ -37,12 +37,12 @@ from elasticsearch import Elasticsearch, RequestsHttpConnection
 
 import pdb
 
-# Localize to Central timezone if needed while preserving datetime or string type
-def datetime_centralize(indate):
+# Localize to Central timezone if needed and return a string that can be JSON serialized
+def datetime_standardize_asstring(indate):
     # We have a datetime type
     if isinstance(indate, datetime):
         if not indate.tzinfo:               # Add missing timezone
-            return(Central_TZ.localize(indate))
+            return(Central_TZ.localize(indate).strftime('%Y-%m-%dT%H:%M:%S%z'))
         else:
             return(indate)
     # We have a string type
@@ -533,7 +533,7 @@ class Router():
 
             for field in ['last_updated', 'start_date_time', 'end_date_time']:
                 if field in item and isinstance(item[field], datetime):
-                    item[field] = datetime_centralize(item[field])
+                    item[field] = datetime_standardize_asstring(item[field])
 
             myNEWRELATIONS = {} # The new relations for this item, key=related ID, value=relation type
             try:
@@ -645,9 +645,9 @@ class Router():
             id_str = str(item['id'])       # From number
             myGLOBALURN = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', contype, id_str)
             if 'created_at' in item and isinstance(item['created_at'], datetime):
-                item['created_at'] = datetime_centralize(item['created_at'])
+                item['created_at'] = datetime_standardize_asstring(item['created_at'])
             if 'updated_at' in item and isinstance(item['updated_at'], datetime):
-                item['updated_at'] = datetime_centralize(item['updated_at'])
+                item['updated_at'] = datetime_standardize_asstring(item['updated_at'])
             myRESTYPE = self.TITLEMAP.get(item['title'], '')
             try:
                 local = ResourceV3Local(
