@@ -1,3 +1,6 @@
+tag-0.3-20210816b JP
+  - datetime_standardize was missing the conversion to UTC
+
 tag-0.3-20210816 JP
   - More flexible datetime_centralize() and datetime_standardize() functions
 

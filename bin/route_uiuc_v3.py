@@ -64,11 +64,11 @@ def datetime_standardize(indate):
             dtm_indate = parse_datetime(indate)
         except:
             return(indate)
-    
-    if not dtm_indate.tzinfo:                 # Add missing timezone
-        return(Central_TZ.localize(dtm_indate))
-    else:
-        return(dtm_indate)
+    # We are missing a timezone
+    if not dtm_indate.tzinfo:
+        dtm_indate = Central_TZ.localize(dtm_indate)
+    # Return datime in UTC
+    return(dtm_indate.astimezone(tz = UTC_TZ))
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
