@@ -1,3 +1,6 @@
+tag-0.3-20210817 JP
+  - Fix date comparison when not ignoring dates
+
 tag-0.3-20210816c JP
   - datetime_standardize_asstring needs to return string that is JSON serializable
 

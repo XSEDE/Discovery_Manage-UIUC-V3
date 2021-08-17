@@ -513,28 +513,26 @@ class Router():
         for item in content[contype]:
             id_str = str(item['id'])
             myGLOBALURN = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', contype, id_str)
+
+            for field in ['last_updated', 'start_date_time', 'end_date_time']:
+                if field in item and isinstance(item[field], datetime):
+                    item[field] = datetime_standardize_asstring(item[field])
+
             # Convert warehouse last_update JSON string to datetime with timezone
             # Incoming last_update is a datetime with timezone
             # Once they are both datetimes with timezone, compare their strings
             # Can't compare directly because tzinfo have different represenations in Python and Django
             if not self.args.ignore_dates:
                 try:
-                    cur_dtm = parse_datetime(cur[myGLOBALURN].EntityJSON['last_updated'].replace(' ',''))
+                    cur_dtm = str(cur[myGLOBALURN].EntityJSON['last_updated'])  # Should be string, but just in case
                 except:
-                    cur_dtm = datetime.now(timezone.utc)
-                try:
-                    new_dtm = item['last_updated']
-                except:
-                    new_dtm = None
+                    cur_dtm = datetime_standardize_asstring(datetime.now(timezone.utc))
+                new_dtm = item.get('last_updated', '')      # Already converted to string above
                 if str(cur_dtm) == str(new_dtm):
                     self.STATS.update({me + '.Skip'})
                     new[myGLOBALURN] = 'Skipped'        # So that we don't Delete_OLD below
                     continue
-
-            for field in ['last_updated', 'start_date_time', 'end_date_time']:
-                if field in item and isinstance(item[field], datetime):
-                    item[field] = datetime_standardize_asstring(item[field])
-
+            
             myNEWRELATIONS = {} # The new relations for this item, key=related ID, value=relation type
             try:
                 myProviderID = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', 'provider', str(item['provider']))
