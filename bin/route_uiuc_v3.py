@@ -405,12 +405,13 @@ class Router():
         for relatedID in newRELATIONS:
             try:
                 relationURN = ':'.join([myURN, md5(relatedID.encode('UTF-8')).hexdigest()])
-                relation = ResourceV3Relation(
+                relation, created = ResourceV3Relation.objects.update_or_create(
                             ID = relationURN,
-                            FirstResourceID = myURN,
-                            SecondResourceID = relatedID,
-                            RelationType = newRELATIONS[relatedID],
-                     )
+                            defaults = {
+                                'FirstResourceID': myURN,
+                                'SecondResourceID': relatedID,
+                                'RelationType': newRELATIONS[relatedID]
+                            })
                 relation.save()
             except Exception as e:
                 msg = '{} saving Relation ID={}: {}'.format(type(e).__name__, relationURN, e)
@@ -438,17 +439,18 @@ class Router():
             id_str = str(item['id'])       # From number
             myGLOBALURN = self.format_GLOBALURN(self.URNPrefix, 'uiuc.edu', contype, id_str)
             try:
-                local = ResourceV3Local(
+                local, created = ResourceV3Local.objects.update_or_create(
                             ID = myGLOBALURN,
-                            CreationTime = datetime.now(timezone.utc),
-                            Validity = self.DefaultValidity,
-                            Affiliation = self.Affiliation,
-                            LocalID = id_str,
-                            LocalType = contype,
-                            LocalURL = config.get('SOURCEDEFAULTURL', None),
-                            CatalogMetaURL = self.CATALOGURN_to_URL(config['CATALOGURN']),
-                            EntityJSON = item,
-                    )
+                            defaults = {
+                                'CreationTime': datetime.now(timezone.utc),
+                                'Validity': self.DefaultValidity,
+                                'Affiliation': self.Affiliation,
+                                'LocalID': id_str,
+                                'LocalType': contype,
+                                'LocalURL': config.get('SOURCEDEFAULTURL', None),
+                                'CatalogMetaURL': self.CATALOGURN_to_URL(config['CATALOGURN']),
+                                'EntityJSON': item
+                            })
                 local.save()
             except Exception as e:
                 msg = '{} saving local ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
@@ -457,21 +459,22 @@ class Router():
             new[myGLOBALURN] = local
 
             try:
-                resource = ResourceV3(
+                resource, created = ResourceV3.objects.update_or_create(
                             ID = myGLOBALURN,
-                            Affiliation = self.Affiliation,
-                            LocalID = id_str,
-                            QualityLevel = 'Production',
-                            Name = item['name'],
-                            ResourceGroup = myRESGROUP,
-                            Type = myRESTYPE,
-                            ShortDescription = None,
-                            ProviderID = None,
-                            Description = None,
-                            Topics = None,
-                            Keywords = None,
-                            Audience = self.Affiliation,
-                     )
+                            defaults = {
+                                'Affiliation': self.Affiliation,
+                                'LocalID': id_str,
+                                'QualityLevel': 'Production',
+                                'Name': item['name'],
+                                'ResourceGroup': myRESGROUP,
+                                'Type': myRESTYPE,
+                                'ShortDescription': None,
+                                'ProviderID': None,
+                                'Description': None,
+                                'Topics': None,
+                                'Keywords': None,
+                                'Audience': self.Affiliation
+                            })
                 resource.save()
                 resource.indexing()
             except Exception as e:
@@ -567,17 +570,18 @@ class Router():
                 EndDateTime = None
                 
             try:
-                local = ResourceV3Local(
+                local, created = ResourceV3Local.objects.update_or_create(
                             ID = myGLOBALURN,
-                            CreationTime = datetime.now(timezone.utc),
-                            Validity = self.DefaultValidity,
-                            Affiliation = self.Affiliation,
-                            LocalID = id_str,
-                            LocalType = contype,
-                            LocalURL = config.get('SOURCEDEFAULTURL', None),
-                            CatalogMetaURL = self.CATALOGURN_to_URL(config['CATALOGURN']),
-                            EntityJSON = item,
-                    )
+                            defaults = {
+                                'CreationTime': datetime.now(timezone.utc),
+                                'Validity': self.DefaultValidity,
+                                'Affiliation': self.Affiliation,
+                                'LocalID': id_str,
+                                'LocalType': contype,
+                                'LocalURL': config.get('SOURCEDEFAULTURL', None),
+                                'CatalogMetaURL': self.CATALOGURN_to_URL(config['CATALOGURN']),
+                                'EntityJSON': item
+                            })
                 local.save()
             except Exception as e:
                 msg = '{} saving local ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
@@ -586,23 +590,24 @@ class Router():
             new[myGLOBALURN] = local
                 
             try:
-                resource = ResourceV3(
+                resource, created = ResourceV3.objects.update_or_create(
                             ID = myGLOBALURN,
-                            Affiliation = self.Affiliation,
-                            LocalID = id_str,
-                            QualityLevel = QualityLevel,
-                            Name = item.get('resource_name', None),
-                            ResourceGroup = myRESGROUP,
-                            Type = myRESTYPE,
-                            ShortDescription = item.get('short_description', None),
-                            ProviderID = myProviderID,
-                            Description = item.get('resource_description', None),
-                            Topics = item.get('topics', None),
-                            Keywords = Keywords,
-                            Audience = self.Affiliation,
-                            StartDateTime = StartDateTime,
-                            EndDateTime = EndDateTime,
-                    )
+                            defaults = {
+                                'Affiliation': self.Affiliation,
+                                'LocalID': id_str,
+                                'QualityLevel': QualityLevel,
+                                'Name': item.get('resource_name', None),
+                                'ResourceGroup': myRESGROUP,
+                                'Type': myRESTYPE,
+                                'ShortDescription': item.get('short_description', None),
+                                'ProviderID': myProviderID,
+                                'Description': item.get('resource_description', None),
+                                'Topics': item.get('topics', None),
+                                'Keywords': Keywords,
+                                'Audience': self.Affiliation,
+                                'StartDateTime': StartDateTime,
+                                'EndDateTime': EndDateTime
+                            })
                 resource.save()
                 resource.indexing()
             except Exception as e:
@@ -648,17 +653,18 @@ class Router():
                 item['updated_at'] = datetime_standardize_asstring(item['updated_at'])
             myRESTYPE = self.TITLEMAP.get(item['title'], '')
             try:
-                local = ResourceV3Local(
+                local, created = ResourceV3Local.objects.update_or_create(
                             ID = myGLOBALURN,
-                            CreationTime = datetime.now(timezone.utc),
-                            Validity = self.DefaultValidity,
-                            Affiliation = self.Affiliation,
-                            LocalID = id_str,
-                            LocalType = contype,
-                            LocalURL = config.get('SOURCEDEFAULTURL', None),
-                            CatalogMetaURL = self.CATALOGURN_to_URL(config['CATALOGURN']),
-                            EntityJSON = item,
-                    )
+                            defaults = {
+                                'CreationTime': datetime.now(timezone.utc),
+                                'Validity': self.DefaultValidity,
+                                'Affiliation': self.Affiliation,
+                                'LocalID': id_str,
+                                'LocalType': contype,
+                                'LocalURL': config.get('SOURCEDEFAULTURL', None),
+                                'CatalogMetaURL': self.CATALOGURN_to_URL(config['CATALOGURN']),
+                                'EntityJSON': item
+                            })
                 local.save()
             except Exception as e:
                 msg = '{} saving local ID={}: {}'.format(type(e).__name__, myGLOBALURN, e)
@@ -667,21 +673,22 @@ class Router():
             new[myGLOBALURN] = local
 
             try:
-                resource = ResourceV3(
+                resource, created = ResourceV3.objects.update_or_create(
                             ID = myGLOBALURN,
-                            Affiliation = self.Affiliation,
-                            LocalID = id_str,
-                            QualityLevel = self.STATUSMAP.get(item.get('publish_status', '1'), 'Production'),
-                            Name = item.get('title', myRESTYPE),
-                            ResourceGroup = myRESGROUP,
-                            Type = myRESTYPE,
-                            ShortDescription = item.get('lede'),
-                            ProviderID = None,
-                            Description = item.get('component_data',''),
-                            Topics = None,
-                            Keywords = None,
-                            Audience = self.Affiliation,
-                    )
+                            defaults = {
+                                'Affiliation': self.Affiliation,
+                                'LocalID': id_str,
+                                'QualityLevel': self.STATUSMAP.get(item.get('publish_status', '1'), 'Production'),
+                                'Name': item.get('title', myRESTYPE),
+                                'ResourceGroup': myRESGROUP,
+                                'Type': myRESTYPE,
+                                'ShortDescription': item.get('lede'),
+                                'ProviderID': None,
+                                'Description': item.get('component_data',''),
+                                'Topics': None,
+                                'Keywords': None,
+                                'Audience': self.Affiliation
+                            })
                 resource.save()
                 resource.indexing()
             except Exception as e:

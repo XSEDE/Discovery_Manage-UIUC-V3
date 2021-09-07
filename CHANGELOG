@@ -1,3 +1,6 @@
+tag-0.4-20210907 JP
+  - Switch to .objects.update_or_create for Drupal 3.0
+
 tag-0.3-20210817 JP
   - Fix date comparison when not ignoring dates
 
