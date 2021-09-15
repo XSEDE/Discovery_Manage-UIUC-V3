@@ -214,7 +214,7 @@ class Router():
         self.TYPEMAP = {
                 'resource_group_events:Event': 'Live Events:Event',
                 'resource_group_online_training:StreamingResource': 'Streamed Events:Training',
-                'resource_group_tools_and_services:BackupAndStorage': 'Streamed Events:Backup and Storage',
+                'resource_group_tools_and_services:BackupAndStorage': 'Computing Tools and Services:Backup and Storage',
                 'resource_group_tools_and_services:ConsultingAndSupport': 'Professional Services:Consulting and Support',
                 'resource_group_tools_and_services:Data': 'Data Resources:Data',
                 'resource_group_tools_and_services:Instrument': 'Computing Tools and Services:Backup and Storage',
